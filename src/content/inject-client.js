@@ -51,29 +51,19 @@
     }
   }
 
-  async function retrieveMapSheetMaxSize() {
-    try {
-      const { mapsheetmaxsize } = await browser.storage.local.get('mapsheetmaxsize');
-      if (mapsheetmaxsize === undefined) {
-        await browser.storage.local.set({ mapsheetmaxsize: 0 });
-        return 0;
-      }
-      if (!Number.isSafeInteger(mapsheetmaxsize) || mapsheetmaxsize < 0) {
-        console.warn('[StravaHeatmapExt] Invalid mapsheetmaxsize; map sheets are disabled.', mapsheetmaxsize);
-        return 0;
-      }
-      return mapsheetmaxsize;
-    } catch (error) {
-      console.error('[StravaHeatmapExt] Error retrieving map sheet maximum size:', error);
-      return 0;
-    }
+  // dev.gpx.studio (gpx.studio's development deployment) uses the gpx.studio client
+  function getClientHost() {
+    const host = window.location.host;
+    return host === 'www.caltopo.com'
+        ? 'caltopo.com'
+        : host === 'dev.gpx.studio'
+        ? 'gpx.studio'
+        : host;
   }
 
-  function injectClientScript(layerPresets, authenticated, manifestVersion, mapSheetMaxSize) {
+  function injectClientScript(layerPresets, authenticated, manifestVersion) {
     try {
-      const host = window.location.host === 'www.caltopo.com'
-        ? 'caltopo.com'
-        : window.location.host;
+      const host = getClientHost();
       const path = `src/clients/${host}/index.js`;
       const script = document.createElement('script');
       script.id = 'strava-heatmap-client';
@@ -101,9 +91,7 @@
 
   function injectClientCSS() {
     try {
-      const host = window.location.host === 'www.caltopo.com'
-        ? 'caltopo.com'
-        : window.location.host;
+      const host = getClientHost();
       const path = `src/clients/${host}/index.css`;
       const href = browser.runtime.getURL(path);
 

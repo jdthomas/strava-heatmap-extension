@@ -2,14 +2,18 @@
 // scripts/slide-lab.mjs when the page saves its list.
 window.SLIDE_LAB_WAYS = [
  {
-  "id": "148185960",
-  "name": "unclassified",
-  "tags": []
+  "id": "1569617534",
+  "name": "Gorton Creek Trail #408",
+  "tags": [
+   "fixed"
+  ]
  },
  {
-  "id": "99288154",
+  "id": "148185960",
   "name": "unclassified",
-  "tags": []
+  "tags": [
+   "fixed"
+  ]
  },
  {
   "id": "73051811",
@@ -29,6 +33,7 @@ window.SLIDE_LAB_WAYS = [
   "id": "36964415",
   "name": "Bibbulmun Track",
   "tags": [
+   "switchback",
    "fixed"
   ]
  },
@@ -76,8 +81,8 @@ window.SLIDE_LAB_WAYS = [
   "id": "897542733",
   "name": "path",
   "tags": [
-   "fixed",
-   "jump"
+   "jump",
+   "wontfix"
   ]
  },
  {
@@ -125,7 +130,6 @@ window.SLIDE_LAB_WAYS = [
   "id": "1568166643",
   "name": "path",
   "tags": [
-   "junction",
    "fixed"
   ]
  },
@@ -160,7 +164,7 @@ window.SLIDE_LAB_WAYS = [
    "parallel",
    "jump",
    "faint",
-   "fixed"
+   "wontfix"
   ]
  },
  {
@@ -168,8 +172,8 @@ window.SLIDE_LAB_WAYS = [
   "name": "track",
   "tags": [
    "jump",
-   "fixed",
-   "switchback"
+   "switchback",
+   "fixed"
   ]
  },
  {
@@ -186,20 +190,113 @@ window.SLIDE_LAB_WAYS = [
   "id": "37097733",
   "name": "Rawnsley Bluff Trail",
   "tags": [
-   "switchback"
+   "switchback",
+   "fixed"
   ]
  },
  {
   "id": "1569617536",
   "name": "Nick Eaton Trail #447 (pdxvr): switchback tangle",
   "tags": [
-   "switchback"
+   "switchback",
+   "fixed"
   ]
  },
  {
   "id": "1570331573",
   "name": "path (rene78): Slide fails",
   "tags": [
+   "fixed"
+  ]
+ },
+ {
+  "id": "77603052",
+  "name": "unclassified",
+  "tags": [
+   "fixed"
+  ]
+ },
+ {
+  "id": "360893038",
+  "name": "secondary",
+  "tags": [
+   "fixed"
+  ]
+ },
+ {
+  "id": "70651505",
+  "name": "secondary",
+  "tags": [
+   "fixed"
+  ]
+ },
+ {
+  "id": "99290495",
+  "name": "residential",
+  "tags": [
+   "fixed"
+  ]
+ },
+ {
+  "id": "77602876",
+  "name": "residential: straight, faint",
+  "tags": [
+   "fixed"
+  ]
+ },
+ {
+  "id": "73051814",
+  "name": "residential",
+  "tags": [
+   "fixed"
+  ]
+ },
+ {
+  "id": "99288154",
+  "name": "unclassified",
+  "tags": [
+   "fixed"
+  ]
+ },
+ {
+  "id": "765245726",
+  "name": "Catamount Trail: tight switchbacks (#43 pdxvr, ChugachMTB)",
+  "tags": [
+   "switchback",
+   "fixed"
+  ]
+ },
+ {
+  "id": "239468111",
+  "name": "South Fork Valley Trail: switchback tips cut (#43 ChugachMTB)",
+  "tags": [
+   "switchback",
+   "wontfix"
+  ]
+ },
+ {
+  "id": "76158507",
+  "name": "Denali View Trail: junction node 81 moved 10.9 m (#43 ChugachMTB)",
+  "tags": [
+   "switchback",
+   "junction",
+   "fixed"
+  ]
+ },
+ {
+  "id": "1192973305",
+  "name": "Hunter Pass Bikers Trail: crossing node 89 (#43 ChugachMTB)",
+  "tags": [
+   "switchback",
+   "junction",
+   "fixed"
+  ]
+ },
+ {
+  "id": "332538430",
+  "name": "Flattop Sunnyside Trail: junction node 156 drawn 7 m off (#43 ChugachMTB)",
+  "tags": [
+   "junction",
    "fixed"
   ]
  }

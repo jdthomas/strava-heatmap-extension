@@ -6,6 +6,21 @@
 
 - Batch and cache styled heatmap tiles for improved performance (by @gradbot).
 
+### `0.15.4` (2026-11-22)
+
+- [iD] Strava Slide follows the centre of the heatmap band much more closely, especially in bends and switchbacks:
+  - Only fixed points stay in place: every other point moves onto the ridge of the raw heat, which the display colors hide on wide bands
+  - Switchback tips reach into the end of the band instead of stopping short. Tip holding and rounding by @ChugachMTB (#49)
+  - No closer to other mapped roads and paths than the line or its drawing already is, so it stays off a stronger neighbouring trail
+  - Fewer points on the line, except at switchback tips
+  - Junctions with other roads and paths, and the line's free ends, move onto the band too: a way ending there follows, one passing through keeps its course. Tagged nodes, relation members and junctions with other features still stay in place
+- [iD] When a line is too long for Strava Slide, the message says to select two of its points and slide it in sections
+
+### `0.15.3` (2026-11-11)
+
+- [gpx.studio] Heatmap uses Strava's current grayscale tiles, colored in the browser like on strava.com, using gpx.studio's new extension API (v2)
+- [gpx.studio] Remembers which heatmap overlays are shown between sessions (#26)
+
 ### `0.15.2.0` (2026-11-06)
 
 Layer selection:

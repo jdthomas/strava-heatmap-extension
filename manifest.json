@@ -16,6 +16,7 @@
     "*://content-a.strava.com/*",
     "*://www.openstreetmap.org/*",
     "*://gpx.studio/*",
+    "*://dev.gpx.studio/*",
     "*://caltopo.com/*",
     "*://www.caltopo.com/*",
     "*://tjasz.github.io/*",
@@ -69,7 +70,9 @@
       "matches": [
         "*://www.openstreetmap.org/id*",
         "*://gpx.studio/app*",
-        "*://gpx.studio/*/app*"
+        "*://gpx.studio/*/app*",
+        "*://dev.gpx.studio/app*",
+        "*://dev.gpx.studio/*/app*"
       ],
       "js": [
         "lib/browser-polyfill.min.js",
@@ -111,6 +114,7 @@
       "matches": [
         "*://www.openstreetmap.org/*",
         "*://gpx.studio/*",
+        "*://dev.gpx.studio/*",
         "*://caltopo.com/*",
         "*://www.caltopo.com/*",
         "*://tjasz.github.io/*",
@@ -129,6 +133,7 @@
         "src/clients/www.openstreetmap.org/start.js",
         "src/clients/www.openstreetmap.org/slide/index.js",
         "src/clients/www.openstreetmap.org/slide/algorithm.js",
+        "src/clients/www.openstreetmap.org/slide/junctions.js",
         "src/clients/www.openstreetmap.org/slide/png.js",
         "src/clients/www.openstreetmap.org/slide/action.js",
         "src/clients/www.openstreetmap.org/slide/tiles.js",
@@ -141,7 +146,7 @@
         "src/clients/gpx.studio/index.js",
         "src/clients/gpx.studio/index.css"
       ],
-      "matches": ["*://gpx.studio/*"]
+      "matches": ["*://gpx.studio/*", "*://dev.gpx.studio/*"]
     },
     {
       "resources": [

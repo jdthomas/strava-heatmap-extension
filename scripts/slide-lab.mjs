@@ -11,7 +11,7 @@
 //   npm run slide-lab:accept [-- ids]      → record the current results there
 //
 // Options: --activity=run (default all), --dump (print points in PNG pixels),
-// --move-ends (let junction ends move, see slide()), --once (one Slide pass,
+// --move-ends (let fixed nodes move, see slide()), --once (one Slide pass,
 // for debugging).
 //
 // OSM data comes from the public API. Strava tiles come from the web page:
@@ -42,9 +42,11 @@ import {
 } from '../src/clients/www.openstreetmap.org/slide/algorithm.js';
 import {
   cleanSlideResult,
+  createSlideAction,
   fixedIndices,
   getSlideSelection,
   isStructure,
+  movableFixedIndices,
 } from '../src/clients/www.openstreetmap.org/slide/action.js';
 import { loadSlideTiles } from '../src/clients/www.openstreetmap.org/slide/tiles.js';
 import { PALETTES } from '../src/clients/common/palettes.js';
@@ -139,6 +141,9 @@ class Way {
   isClosed() {
     return this.nodes.length > 2 && this.nodes[0] === this.nodes[this.nodes.length - 1];
   }
+  update({ nodes }) {
+    return new Way(this.id, nodes, this.tags);
+  }
   // Simplified iD rule: Slide only needs to tell lines from areas.
   geometry() {
     return this.isClosed() &&
@@ -159,12 +164,15 @@ class Graph {
     this.relationParents = {};
     for (const e of elements) {
       if (e.type === 'node') {
-        this.entities[`n${e.id}`] = {
+        const node = (loc) => ({
           id: `n${e.id}`,
           type: 'node',
-          loc: [e.lon, e.lat],
+          loc,
           tags: e.tags || {},
-        };
+          // As iD's osmNode: createSlideAction builds the moved nodes with it.
+          move: node,
+        });
+        this.entities[`n${e.id}`] = node([e.lon, e.lat]);
       } else if (e.type === 'way') {
         const way = new Way(`w${e.id}`, e.nodes.map((id) => `n${id}`), e.tags || {});
         this.entities[way.id] = way;
@@ -211,8 +219,8 @@ async function loadGraph(wayId) {
 // --- Slide pipeline (mirrors index.js) -----------------------------------------
 
 // The line's first and last points stay fixed, like in index.js. `moveEnds`:
-// experiment, they may move up to the snap radius, even when they are
-// junctions.
+// fixed nodes may move to the middle of the band (see movableFixedIndices),
+// as in iD; off, they stay, as in 0.15.
 export async function slide(wayId, activity, { moveEnds = false, once = false } = {}) {
   const started = Date.now();
   const graph = await loadGraph(wayId);
@@ -269,21 +277,21 @@ export async function slide(wayId, activity, { moveEnds = false, once = false } 
   }
   const raster = createHeatmapRaster(loaded.tiles, loaded.zoom, loaded.bounds);
   const last = selection.nodes.length - 1;
-  const fixed = moveEnds
-    ? fixedIndices(graph, selection).filter(
-        (i) =>
-          (i !== 0 && i !== last) ||
-          Object.keys(selection.nodes[i].tags).length ||
-          graph.parentRelations(selection.nodes[i]).length
-      )
-    : [...new Set([0, last, ...fixedIndices(graph, selection)])];
+  const fixed = [...new Set([0, last, ...fixedIndices(graph, selection)])];
   const result = await (once ? slideLine : slideLineTwice)(locations, raster, {
     fixedIndices: fixed,
-    limitedIndices: moveEnds ? [0, last] : [],
+    movableIndices: moveEnds ? movableFixedIndices(graph, selection) : [],
     otherWays: others.map((other) => other.locs),
     signal,
   });
   const cleaned = cleanSlideResult(graph, selection, result);
+  // The edit iD would make: its safety checks refuse some results.
+  let refused = null;
+  try {
+    createSlideAction(graph, selection, result, ({ loc }) => ({ id: 'n-new', loc }));
+  } catch (error) {
+    refused = error.message;
+  }
   // Junction ends that moved: in iD, the connected ways would bend with them.
   const movedJunctions = cleaned.flatMap((p) =>
     p.nodeIndex !== null &&
@@ -341,6 +349,7 @@ export async function slide(wayId, activity, { moveEnds = false, once = false } 
       skipped: result.skipped || 0,
       movedJunctions: movedJunctions.length,
       alongOther: cleaned.alongOther || 0,
+      refused,
       ms: Date.now() - started,
     },
   };
