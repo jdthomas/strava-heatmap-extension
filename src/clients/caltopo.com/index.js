@@ -9,7 +9,10 @@ import {
   setupLayerPresetsChangeListener,
 } from '../common/layers.js';
 
-installGradientTileRecoloring();
+// Recolour palette tiles once on a canvas instead of running a live SVG filter
+// on every tile: the filter made panning and zooming slow in Firefox. The SVG
+// filters stay only as a fallback for tiles the canvas path could not load.
+installGradientTileRecoloring({ recolorPalettes: 'images' });
 injectHeatmapColorFilters();
 
 const OVERLAY_KEY = '__stravaHeatmapCalTopoOverlay';
@@ -538,10 +541,17 @@ function setupRibbonObserver() {
   createRibbon();
   if (ribbonObserver) return;
 
+  // Coalesce bursts of page mutations (map tiles, markers) into one check.
+  let ribbonCheckQueued = false;
   ribbonObserver = new MutationObserver(() => {
-    if (!document.getElementById(SECTION_HEADING_ID)
-      || !document.getElementById(SECTION_LIST_ID)
-      || layerConfigs.some(({ id }) => !document.getElementById(`${RIBBON_ID}-${id}`))) createRibbon();
+    if (ribbonCheckQueued) return;
+    ribbonCheckQueued = true;
+    window.setTimeout(() => {
+      ribbonCheckQueued = false;
+      if (!document.getElementById(SECTION_HEADING_ID)
+        || !document.getElementById(SECTION_LIST_ID)
+        || layerConfigs.some(({ id }) => !document.getElementById(`${RIBBON_ID}-${id}`))) createRibbon();
+    }, 250);
   });
   ribbonObserver.observe(document.body, { childList: true, subtree: true });
 }

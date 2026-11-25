@@ -51,6 +51,38 @@ function getColorRamp(url, recolorPalettes) {
     : null;
 }
 
+// Named palettes are 256-entry ramps indexed directly by the red channel, so a
+// flat lookup table avoids per-pixel interpolation.
+const paletteTables = new WeakMap();
+function getPaletteTable(stops) {
+  let table = paletteTables.get(stops);
+  if (!table) {
+    table = new Uint8ClampedArray(256 * 4);
+    stops.forEach((stop, index) => table.set(stop, index * 4));
+    paletteTables.set(stops, table);
+  }
+  return table;
+}
+
+// Recoloured tiles are kept so panning back or re-zooming does not repeat the
+// decode/recolour/encode work.
+const RECOLOR_CACHE_LIMIT = 400;
+const recolorCache = new Map();
+function getCachedTile(key) {
+  const blob = recolorCache.get(key);
+  if (blob) {
+    recolorCache.delete(key);
+    recolorCache.set(key, blob);
+  }
+  return blob;
+}
+function cacheTile(key, blob) {
+  recolorCache.set(key, blob);
+  if (recolorCache.size > RECOLOR_CACHE_LIMIT) {
+    recolorCache.delete(recolorCache.keys().next().value);
+  }
+}
+
 async function recolorBlob(blob, { stops: gradient, palette }) {
   const bitmap = await createImageBitmap(blob);
   try {
@@ -64,7 +96,16 @@ async function recolorBlob(blob, { stops: gradient, palette }) {
     const imageData = context.getImageData(0, 0, bitmap.width, bitmap.height);
     const { data } = imageData;
 
-    for (let offset = 0; offset < data.length; offset += 4) {
+    if (palette && gradient.length === 256) {
+      const table = getPaletteTable(gradient);
+      for (let offset = 0; offset < data.length; offset += 4) {
+        const entry = data[offset] * 4;
+        data[offset] = table[entry];
+        data[offset + 1] = table[entry + 1];
+        data[offset + 2] = table[entry + 2];
+        data[offset + 3] = table[entry + 3];
+      }
+    } else for (let offset = 0; offset < data.length; offset += 4) {
       // Named palettes match the SVG filters: red indexes both color and alpha.
       const intensity = palette
         ? data[offset] / 255
@@ -172,12 +213,24 @@ function installImageInterceptor(nativeFetch, getColors) {
     image.style.visibility = 'hidden';
 
     try {
-      const response = await nativeFetch(source, { signal: state.controller.signal });
-      if (!response.ok) {
-        throw new Error(`Tile request failed with status ${response.status}.`);
+      let recolored = gradient ? getCachedTile(source) : undefined;
+      if (!recolored) {
+        const response = await nativeFetch(source, { signal: state.controller.signal });
+        if (!response.ok) {
+          throw new Error(`Tile request failed with status ${response.status}.`);
+        }
+        const blob = await response.blob();
+        if (gradient && blob.size === 0) {
+          // Strava has no data here: show nothing instead of failing to decode.
+          if (imageStates.get(image) !== state) return;
+          image.style.visibility = state.visibility;
+          imageStates.delete(image);
+          sourceDescriptor.set.call(image, transparentTile);
+          return;
+        }
+        recolored = gradient ? await recolorBlob(blob, gradient) : blob;
+        if (gradient) cacheTile(source, recolored);
       }
-      const blob = await response.blob();
-      const recolored = gradient ? await recolorBlob(blob, gradient) : blob;
       if (imageStates.get(image) !== state) return;
 
       const objectUrl = URL.createObjectURL(recolored);
@@ -258,16 +311,19 @@ function installImageInterceptor(nativeFetch, getColors) {
       for (const node of record.removedNodes ?? []) {
         if (!(node instanceof Element) || node.isConnected) continue;
         if (node instanceof HTMLImageElement) cancelPendingImage(node);
-        node.querySelectorAll('img').forEach((image) => cancelPendingImage(image));
+        else if (node.firstElementChild) {
+          node.querySelectorAll('img').forEach((image) => cancelPendingImage(image));
+        }
       }
       for (const node of record.addedNodes) {
         if (!(node instanceof Element)) continue;
         if (node instanceof HTMLImageElement) {
           processImage(node, node.getAttribute('src'));
+        } else if (node.firstElementChild) {
+          node
+            .querySelectorAll('img')
+            .forEach((image) => processImage(image, image.getAttribute('src')));
         }
-        node
-          .querySelectorAll('img')
-          .forEach((image) => processImage(image, image.getAttribute('src')));
       }
     }
   });
@@ -289,7 +345,10 @@ export function installGradientTileRecoloring({ recolorPalettes = false } = {}) 
 
   const nativeFetch = window.fetch.bind(window);
   const fetchTile = createWeeklyTileLoader(nativeFetch);
-  const getColors = (url) => getColorRamp(url, recolorPalettes);
-  installFetchInterceptor(fetchTile, getColors);
-  installImageInterceptor(fetchTile, getColors);
+  // 'images' recolours palette tiles shown as <img> only; fetch() callers
+  // (snap, map sheets) still receive the original grayscale intensity tiles.
+  const getFetchColors = (url) => getColorRamp(url, recolorPalettes === true);
+  const getImageColors = (url) => getColorRamp(url, Boolean(recolorPalettes));
+  installFetchInterceptor(fetchTile, getFetchColors);
+  installImageInterceptor(fetchTile, getImageColors);
 }
