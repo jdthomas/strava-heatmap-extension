@@ -247,6 +247,60 @@ test('GPX Studio requests grayscale tiles and enables exact palette recoloring',
   }
 });
 
+test('GPX Studio initializes authenticated v2 overlays with every palette ramp', async (t) => {
+  const previous = ['window', 'document', 'localStorage'].map((name) =>
+    [name, Object.getOwnPropertyDescriptor(globalThis, name)]
+  );
+  t.after(() => {
+    for (const [name, descriptor] of previous) {
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+      else delete globalThis[name];
+    }
+  });
+  let overlays;
+  const errors = [];
+  t.mock.method(console, 'error', (...args) => errors.push(args));
+  globalThis.window = {
+    __stravaGradientTileRecoloringInstalled: true,
+    addEventListener() {},
+    gpxstudio: {
+      version: 2,
+      ready: Promise.resolve(),
+      setOverlays(name, value) {
+        assert.equal(name, 'Strava Heatmap');
+        overlays = value;
+      },
+      onVisibilityChange() {},
+    },
+  };
+  globalThis.document = {
+    querySelector: () => ({ dataset: {
+      version: 'test',
+      authenticated: 'true',
+      layers: palettes.map((color) => `ride:${color}`).join(';'),
+    } }),
+  };
+  globalThis.localStorage = { getItem: () => null };
+
+  await import('../src/clients/gpx.studio/index.js');
+  await new Promise(setImmediate);
+  assert.deepEqual(errors, []);
+  assert.equal(overlays.length, palettes.length);
+  for (const [index, color] of palettes.entries()) {
+    const style = overlays[index].style;
+    assert.equal(style.sources.heatmap.type, 'raster-dem');
+    const ramp = style.layers[0].paint['color-relief-color'];
+    assert.deepEqual(ramp.slice(0, 3), ['interpolate', ['linear'], ['elevation']]);
+    assert.equal(ramp.length, 3 + 256 * 2);
+    const bytes = Buffer.from(PALETTES[color], 'hex');
+    for (let intensity = 0; intensity < 256; intensity++) {
+      const [r, g, b, a] = bytes.subarray(intensity * 4, intensity * 4 + 4);
+      assert.equal(ramp[3 + intensity * 2], intensity);
+      assert.equal(ramp[4 + intensity * 2], `rgba(${r},${g},${b},${+(a / 255).toFixed(4)})`);
+    }
+  }
+});
+
 test('palette filters preserve color and opacity on 8-bit intermediate surfaces', (t) => {
   // Restore any existing DOM global so this test does not affect other tests.
   const previousDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');

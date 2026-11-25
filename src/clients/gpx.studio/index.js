@@ -1,6 +1,7 @@
 import { setupAuthStatusChangeListener } from '../common/auth.js';
 import { parseLayerPresets, setupLayerPresetsChangeListener, getLayerConfigs } from '../common/layers.js';
 import { installGradientTileRecoloring } from '../common/gradient-tiles.js';
+import { PALETTES } from '../common/palettes.js';
 
 installGradientTileRecoloring({ recolorPalettes: true });
 
