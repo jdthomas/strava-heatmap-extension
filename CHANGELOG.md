@@ -2,6 +2,10 @@
 
 ## Versions
 
+### `0.15.4.0` (2026-11-25)
+
+- Batch and cache styled heatmap tiles for improved performance (by @gradbot).
+
 ### `0.15.2.0` (2026-11-06)
 
 Layer selection:
