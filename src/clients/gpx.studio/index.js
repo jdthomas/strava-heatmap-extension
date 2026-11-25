@@ -1,7 +1,6 @@
 import { setupAuthStatusChangeListener } from '../common/auth.js';
 import { parseLayerPresets, setupLayerPresetsChangeListener, getLayerConfigs } from '../common/layers.js';
 import { installGradientTileRecoloring } from '../common/gradient-tiles.js';
-import { PALETTES } from '../common/palettes.js';
 
 installGradientTileRecoloring({ recolorPalettes: true });
 
@@ -20,54 +19,19 @@ async function waitForGpxStudio(maxAttempts = 50, interval = 100) {
 // Strava tiles are 512 px; drawing them as 256 keeps the look of the v1 API
 const TILE_SIZE = 256;
 
-// Strava's palette as a color-relief ramp: the intensity (red channel) of the
-// grayscale tile is read as the elevation of a raster-dem source.
-function getColorRamp(color) {
-  const bytes = PALETTES[color].match(/../g).map((hex) => parseInt(hex, 16));
-  const stops = [];
-  for (let i = 0; i < 256; i++) {
-    const [r, g, b, a] = bytes.slice(i * 4, i * 4 + 4);
-    stops.push(i, `rgba(${r},${g},${b},${+(a / 255).toFixed(4)})`);
-  }
-  return ['interpolate', ['linear'], ['elevation'], ...stops];
-}
-
-function getOverlayStyle(config, color, authenticated) {
-  const source = {
-    tiles: [config.template],
-    tileSize: TILE_SIZE,
-    maxzoom: config.zoomExtent[1],
-  };
-  if (!authenticated) {
-    // the logged-out fallback is a plain image
-    return {
-      version: 8,
-      sources: { heatmap: { type: 'raster', ...source } },
-      layers: [{ id: 'heatmap', type: 'raster', source: 'heatmap' }],
-    };
-  }
+function getOverlayStyle(config) {
+  // The shared tile interceptor applies palettes and custom gradients once.
   return {
     version: 8,
     sources: {
       heatmap: {
-        type: 'raster-dem',
-        ...source,
-        encoding: 'custom',
-        // green and blue must not be 0: MapLibre divides by the smallest factor
-        redFactor: 1,
-        greenFactor: 1 / 65536,
-        blueFactor: 1 / 65536,
-        baseShift: 0,
+        type: 'raster',
+        tiles: [config.template],
+        tileSize: TILE_SIZE,
+        maxzoom: config.zoomExtent[1],
       },
     },
-    layers: [
-      {
-        id: 'heatmap',
-        type: 'color-relief',
-        source: 'heatmap',
-        paint: { 'color-relief-color': getColorRamp(color) },
-      },
-    ],
+    layers: [{ id: 'heatmap', type: 'raster', source: 'heatmap' }],
   };
 }
 
@@ -101,10 +65,10 @@ async function applyOverlays(layerPresets, authenticated, version) {
     const saved = getSavedVisibility();
     window.gpxstudio.setOverlays(
       'Strava Heatmap',
-      layerConfigs.map((config, index) => ({
+      layerConfigs.map((config) => ({
         id: config.id,
         name: config.name,
-        style: getOverlayStyle(config, layerPresets[index].color, authenticated),
+        style: getOverlayStyle(config),
         visible: saved[config.id],
       }))
     );

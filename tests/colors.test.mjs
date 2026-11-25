@@ -247,7 +247,7 @@ test('GPX Studio requests grayscale tiles and enables exact palette recoloring',
   }
 });
 
-test('GPX Studio initializes authenticated v2 overlays with every palette ramp', async (t) => {
+test('GPX Studio v2 displays recolored palettes and custom gradients as raster overlays', async (t) => {
   const previous = ['window', 'document', 'localStorage'].map((name) =>
     [name, Object.getOwnPropertyDescriptor(globalThis, name)]
   );
@@ -258,11 +258,14 @@ test('GPX Studio initializes authenticated v2 overlays with every palette ramp',
     }
   });
   let overlays;
+  const listeners = [];
   const errors = [];
   t.mock.method(console, 'error', (...args) => errors.push(args));
   globalThis.window = {
     __stravaGradientTileRecoloringInstalled: true,
-    addEventListener() {},
+    addEventListener(type, listener) {
+      if (type === 'message') listeners.push(listener);
+    },
     gpxstudio: {
       version: 2,
       ready: Promise.resolve(),
@@ -277,7 +280,11 @@ test('GPX Studio initializes authenticated v2 overlays with every palette ramp',
     querySelector: () => ({ dataset: {
       version: 'test',
       authenticated: 'true',
-      layers: palettes.map((color) => `ride:${color}`).join(';'),
+      layers: [
+        ...palettes.map((color) => `ride:${color}`),
+        'run:grayscale:weekly:#123456,0|#abcdef,0.5|#ffffff,1',
+        'run:grayscale',
+      ].join(';'),
     } }),
   };
   globalThis.localStorage = { getItem: () => null };
@@ -285,20 +292,31 @@ test('GPX Studio initializes authenticated v2 overlays with every palette ramp',
   await import('../src/clients/gpx.studio/index.js');
   await new Promise(setImmediate);
   assert.deepEqual(errors, []);
-  assert.equal(overlays.length, palettes.length);
+  assert.equal(overlays.length, palettes.length + 2);
   for (const [index, color] of palettes.entries()) {
-    const style = overlays[index].style;
-    assert.equal(style.sources.heatmap.type, 'raster-dem');
-    const ramp = style.layers[0].paint['color-relief-color'];
-    assert.deepEqual(ramp.slice(0, 3), ['interpolate', ['linear'], ['elevation']]);
-    assert.equal(ramp.length, 3 + 256 * 2);
-    const bytes = Buffer.from(PALETTES[color], 'hex');
-    for (let intensity = 0; intensity < 256; intensity++) {
-      const [r, g, b, a] = bytes.subarray(intensity * 4, intensity * 4 + 4);
-      assert.equal(ramp[3 + intensity * 2], intensity);
-      assert.equal(ramp[4 + intensity * 2], `rgba(${r},${g},${b},${+(a / 255).toFixed(4)})`);
-    }
+    const url = new URL(overlays[index].style.sources.heatmap.tiles[0]);
+    assert.equal(url.searchParams.get('heatmap-color'), color);
   }
+  assert.ok(overlays[palettes.length].style.sources.heatmap.tiles[0]
+    .endsWith('#strava-gradient=12345600-abcdef80-ffffffff'));
+  assert.ok(overlays[palettes.length + 1].style.sources.heatmap.tiles[0]
+    .endsWith('#strava-gradient=000000ff-ffffffff'));
+  const assertRasterStyles = () => {
+    for (const { style } of overlays) {
+      assert.equal(style.sources.heatmap.type, 'raster');
+      assert.equal(style.sources.heatmap.tileSize, 256);
+      assert.deepEqual(style.layers, [{ id: 'heatmap', type: 'raster', source: 'heatmap' }]);
+    }
+  };
+  assertRasterStyles();
+  for (const listener of listeners) {
+    await listener({ source: window, data: { type: 'authStatusChanged', payload: false } });
+  }
+  assertRasterStyles();
+  for (const { style } of overlays) {
+    assert.equal(new URL(style.sources.heatmap.tiles[0]).hostname, 'raw.githubusercontent.com');
+  }
+  assert.deepEqual(errors, []);
 });
 
 test('palette filters preserve color and opacity on 8-bit intermediate surfaces', (t) => {
