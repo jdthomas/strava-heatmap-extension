@@ -4,7 +4,7 @@
 
 ### `0.15.4.0` (2026-11-25)
 
-- Batch and cache styled heatmap tiles for improved performance (by @gradbot).
+- Batch and cache styled heatmap tiles for improved performance. By @gradbot #2.
 
 ### `0.15.4` (2026-11-22)
 
