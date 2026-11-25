@@ -156,6 +156,7 @@
         "src/clients/caltopo.com/snap-network.js",
         "src/clients/caltopo.com/map-sheet.js",
         "src/clients/www.openstreetmap.org/slide/algorithm.js",
+        "src/clients/www.openstreetmap.org/slide/junctions.js",
         "src/clients/www.openstreetmap.org/slide/png.js",
         "src/clients/www.openstreetmap.org/slide/tiles.js"
       ],
@@ -174,6 +175,7 @@
         "src/clients/brouter.de/index.css",
         "src/clients/brouter.de/slide.js",
         "src/clients/www.openstreetmap.org/slide/algorithm.js",
+        "src/clients/www.openstreetmap.org/slide/junctions.js",
         "src/clients/www.openstreetmap.org/slide/png.js",
         "src/clients/www.openstreetmap.org/slide/tiles.js",
         "icons/slide.svg"

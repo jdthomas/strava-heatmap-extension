@@ -8,6 +8,25 @@ const { pathToFileURL } = require('node:url');
 const vm = require('node:vm');
 const AdmZip = require('adm-zip');
 
+test('shared Slide modules expose their imports to every consuming site', () => {
+  const repository = path.resolve(__dirname, '..');
+  const manifest = JSON.parse(fs.readFileSync(path.join(repository, 'manifest.json'), 'utf8'));
+  const slideDirectory = 'src/clients/www.openstreetmap.org/slide/';
+  for (const entry of manifest.web_accessible_resources) {
+    for (const file of entry.resources.filter((resource) => resource.startsWith(slideDirectory))) {
+      const source = fs.readFileSync(path.join(repository, file), 'utf8');
+      for (const [, reference] of source.matchAll(/\bfrom\s*["'](\.[^"']+)["']/g)) {
+        const target = path.posix.normalize(path.posix.join(path.posix.dirname(file), reference));
+        for (const match of entry.matches) {
+          assert.ok(manifest.web_accessible_resources.some((allowed) =>
+            allowed.matches.includes(match) && allowed.resources.includes(target)
+          ), `${file} needs ${target} exposed to ${match}`);
+        }
+      }
+    }
+  }
+});
+
 function assertAboutHelpLink(zip, version, guide) {
   const html = zip.readAsText('src/about/index.html');
   const helpTag = html.match(/<a\b[^>]*href="#readme"[^>]*>/);
@@ -152,7 +171,7 @@ test('CalTopo-only packages retain their dependencies without other client integ
     { cwd: root, env: { ...process.env, PATH: path.dirname(process.execPath) } }
   );
   assert.match(build().toString(), /builds created successfully/);
-  const sharedSlideFiles = ['algorithm.js', 'png.js', 'tiles.js']
+  const sharedSlideFiles = ['algorithm.js', 'junctions.js', 'png.js', 'tiles.js']
     .map((file) => `src/clients/www.openstreetmap.org/slide/${file}`);
   const clientFiles = [
     'src/clients/caltopo.com/index.js',
